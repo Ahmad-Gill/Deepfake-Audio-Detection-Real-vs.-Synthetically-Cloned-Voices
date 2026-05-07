@@ -68,7 +68,6 @@ htmlcov/
 .ruff_cache/
 
 # Paper Reader skill outputs
-paper-summaries/**/*.md
 paper-summaries/**/*.tmp
 !paper-summaries/.gitkeep
 
