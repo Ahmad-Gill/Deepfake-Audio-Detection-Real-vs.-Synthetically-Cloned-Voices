@@ -3,46 +3,46 @@
 ## 10 PAPERS TO KEEP
 
 ### Foundation & Problem Definition
-1. **A Survey on Speech Deepfake Detection** (2024) [2404.13914v2]
+1. **A Survey on Speech Deepfake Detection** (2024) [arXiv:2404.13914](https://arxiv.org/abs/2404.13914)
    - **Role:** Lit review backbone and taxonomy
    - **Use in:** Structure your literature review sections around this paper's categorization
 
-2. **ASVspoof 2019: A Large-Scale Public Database of Synthesized, Converted and Replayed Speech** (2019) [1911.01601v4]
+2. **ASVspoof 2019: A Large-Scale Public Database of Synthesized, Converted and Replayed Speech** (2019) [arXiv:1911.01601](https://arxiv.org/abs/1911.01601)
    - **Role:** Dataset specification
    - **Use in:** Dataset section; extract attack types A01–A19, speaker splits, protocols
 
-3. **ASVspoof 2019: Future Horizons in Spoofed and Fake Audio Detection** (2019) [1904.05441v2]
+3. **ASVspoof 2019: Future Horizons in Spoofed and Fake Audio Detection** (2019) [arXiv:1904.05441](https://arxiv.org/abs/1904.05441)
    - **Role:** Evaluation metrics and challenge protocol
    - **Use in:** Evaluation section; define EER, t-DCF; cite CQCC+GMM baseline numbers
 
 ### Core Architectures (Baselines & Proposed Method)
-4. **End-to-End Anti-Spoofing with RawNet2** (2020) [2011.01108v3]
+4. **End-to-End Anti-Spoofing with RawNet2** (2020) [arXiv:2011.01108](https://arxiv.org/abs/2011.01108)
    - **Role:** Primary baseline (end-to-end paradigm)
    - **Use in:** Methodology section; implement/reproduce as main baseline
 
-5. **AASIST: Audio Anti-Spoofing Using Integrated Spectro-Temporal Graph Attention** (2021) [2110.01200v1]
+5. **AASIST: Audio Anti-Spoofing Using Integrated Spectro-Temporal Graph Attention** (2021) [arXiv:2110.01200](https://arxiv.org/abs/2110.01200)
    - **Role:** SOTA architecture (0.83% EER on ASVspoof 2019 LA)
    - **Use in:** Methodology section; either use as proposed method or strongest baseline
 
-6. **A Comparative Study on Recent Neural Spoofing Countermeasures for ASVspoof 2019** (2021) [2103.11326v2]
+6. **A Comparative Study on Recent Neural Spoofing Countermeasures for Synthetic Speech Detection** (2021) [arXiv:2103.11326](https://arxiv.org/abs/2103.11326)
    - **Role:** Baseline benchmark numbers across multiple models
    - **Use in:** Results/baseline comparison table; justifies which baselines you selected
 
 ### Feature Strategy (What Goes Into Your Model)
-7. **wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations** (2020) [2006.11477v3]
+7. **wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations** (2020) [arXiv:2006.11477](https://arxiv.org/abs/2006.11477)
    - **Role:** Foundation for SSL-based feature extraction
    - **Use in:** Background section if using SSL features; explain contextualized representations
 
-8. **Investigating Self-Supervised Front Ends for Speech Spoofing Countermeasures** (2021) [2111.07725v3]
+8. **Investigating Self-Supervised Front Ends for Speech Spoofing Countermeasures** (2021) [arXiv:2111.07725](https://arxiv.org/abs/2111.07725)
    - **Role:** Which SSL layer/model to use for anti-spoofing
    - **Use in:** Methodology section; justify your SSL feature extraction choices
 
 ### Augmentation & Generalization (Project Core Challenge)
-9. **RawBoost: A Raw Data Boosting and Augmentation Method for Anti-Spoofing** (2021) [2111.04433v2]
+9. **RawBoost: A Raw Data Boosting and Augmentation Method Applied to Automatic Speaker Verification Anti-Spoofing** (2021) [arXiv:2111.04433](https://arxiv.org/abs/2111.04433)
    - **Role:** Data augmentation strategy implementation
    - **Use in:** Methodology/experiments; implement and ablate RawBoost in your pipeline
 
-10. **Does Audio Deepfake Detection Generalize?** (2022) [2203.16263v5]
+10. **Does Audio Deepfake Detection Generalize?** (2022) [arXiv:2203.16263](https://arxiv.org/abs/2203.16263)
     - **Role:** Problem motivation (cross-dataset generalization failure)
     - **Use in:** Introduction and motivation; justifies entire project direction
 
