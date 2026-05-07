@@ -1,41 +1,77 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*.egg-info/
+dist/
+build/
 
 # Jupyter Notebook
 .ipynb_checkpoints/
 
 # Virtual environments
 .env
-venv/
 .venv/
+venv/
 env/
 ENV/
 
-# Conda environments
+# Conda
 .conda/
 
-# Dataset files
-data/
-*.zip
-*.flac
-*.wav
-*.mp3
+# Data files (keep structure with .gitkeep)
+data/raw/**/*.wav
+data/raw/**/*.mp3
+data/raw/**/*.flac
+data/raw/**/*.m4a
+data/processed/**/*.pkl
+data/processed/**/*.npy
+!data/raw/.gitkeep
+!data/processed/.gitkeep
 
-# Model files
-models/
-checkpoints/
-*.h5
-*.keras
-*.pt
-*.pth
-*.pkl
-*.joblib
+# Model checkpoints (keep directory structure)
+models/**/*.pth
+models/**/*.pt
+models/**/*.h5
+models/**/*.keras
+models/**/*.pkl
+!models/.gitkeep
+checkpoints/**/*.pth
+checkpoints/**/*.pt
+!checkpoints/.gitkeep
+
+# Results and logs
+results/
+logs/
+*.log
 
 # System files
 .DS_Store
+Thumbs.db
 
 # VS Code
 .vscode/
+*.code-workspace
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Linting
+.mypy_cache/
+.ruff_cache/
+
+# Paper Reader skill outputs
+paper-summaries/**/*.md
+paper-summaries/**/*.tmp
+!paper-summaries/.gitkeep
+
+# Keep the skill itself
+!skills/
+!skills/**
