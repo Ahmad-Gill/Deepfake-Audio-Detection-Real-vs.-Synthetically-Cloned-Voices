@@ -25,6 +25,7 @@ data/raw/**/*.flac
 data/raw/**/*.m4a
 data/processed/**/*.pkl
 data/processed/**/*.npy
+data/DS_10283_3336
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
