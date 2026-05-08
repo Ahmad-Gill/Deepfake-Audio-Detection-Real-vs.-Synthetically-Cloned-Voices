@@ -27,3 +27,35 @@ Potential Models:
 - ResNet
 - LSTM
 - Transformer-based audio models
+
+## 🤖 AI Skills & Development Guides
+
+This repository includes **AI-powered development skills** in the `skills/` directory to accelerate your work:
+
+### Available Skills
+- **`implementation-guide/`** - Complete coding, training, and debugging guidance
+- **`midterm-report-writer/`** - Academic report writing assistance  
+- **`paper-reader/`** - Research paper analysis and summarization
+
+### How to Use Skills
+1. **For Implementation Work**: Ask anything about coding, training, debugging
+   - *"Help me implement RawNet2"*
+   - *"My training isn't converging"*
+   - *"How do I compute EER?"*
+
+2. **For Report Writing**: Get help with academic writing
+   - *"Write my methodology section"*
+   - *"Help me analyze these results"*
+
+3. **For Research**: Get paper summaries and insights
+   - *"Summarize the AASIST paper"*
+   - *"What are the key findings from RawBoost?"*
+
+### Quick Skill Reference
+```bash
+# When you need help, just ask naturally:
+"Set up my environment"           → Environment setup guide
+"Debug my training"              → Debugging assistance  
+"Run experiments"                → Experiment planning
+"Write evaluation section"       → Report writing help
+```
