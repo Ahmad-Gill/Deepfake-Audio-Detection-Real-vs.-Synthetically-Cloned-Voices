@@ -87,13 +87,19 @@ The teacher minimizes **OC-Softmax** with margins $m_{\text{real}} = 0.9$, $m_{\
 
 $$\mathcal{L}_{\text{student}} = \alpha\,\mathcal{L}_{\text{OC}} + (1-\alpha)\, T^2 \cdot \text{KL}\!\left(\sigma(z_t/T)\,\|\,\sigma(z_s/T)\right),\quad \alpha = 0.5,\, T = 3$$
 
+### 3.6 Preprocessing
 
+Preprocessing is implemented in [colab/01_preprocessing.ipynb](../colab/01_preprocessing.ipynb) and runs once, offline, so that every downstream notebook reads uniform tensors directly from disk. Raw FLAC files in ASVspoof 2019 LA arrive at heterogeneous sample rates and durations; we (i) load each file with `librosa.load(sr=None, mono=True)` to collapse to a single channel, (ii) resample to **16 kHz** with `librosa.resample` — the rate at which wav2vec 2.0 was pre-trained, mismatched rates would silently corrupt the SSL features [7] — and (iii) pad with zeros or centre-truncate to exactly **6 s (96 000 samples)**, the 95ᵗʰ percentile of the LA-train duration distribution, which preserves the bulk of each utterance without forcing oversize tensors. The original (pre-pad) length of each clip is recorded in a separate metadata CSV so the dataloader can later build an attention mask that zeroes out the padded positions when wav2vec 2.0 computes its hidden states. The preprocessed clips are written as 16-bit FLAC, the protocol files are copied alongside, and the raw 18 GB download is deleted to free Colab disk. The output of this stage is verified row-by-row against the protocol files — **25,380 / 24,844 / 71,237 clips** for train / dev / eval [REAL] — confirming no clip was lost in conversion.
 
-### 3.7 Training configuration
+### 3.7 Data augmentation
+
+Augmentation is implemented in [colab/02_dataset_augmentation.ipynb](../colab/02_dataset_augmentation.ipynb) (function `apply_augmentation`) and is applied **on-the-fly during training only** (`is_train=True` flag in `ASVspoofDataset.__getitem__`), with fresh random parameters every epoch; the dev and eval splits always see clean audio. The augmentation policy follows Tak et al. [9] and combines two complementary perturbations: **with probability 0.7 we apply RawBoost**, which first inflicts a *convolutive* distortion by sampling 1–5 Gaussian notch filters in the FFT domain (random centre frequency 100 Hz–8 kHz, random bandwidth 50–300 Hz) and multiplying the spectrum elementwise, then an *impulsive* signal-dependent noise of the form $\mathbf{x} + \eta\!\cdot\!|\mathbf{x}|\!\cdot\!\mathcal{N}(0,1)$ with $\eta \sim \mathcal{U}(0.001, 0.01)$. **With probability 0.3 we apply codec augmentation** — either a μ-law encode/decode round-trip (telephone-style compression) or a 16 kHz → 8 kHz → 16 kHz resample (bandwidth limiting characteristic of VoIP / WhatsApp). After augmentation, every clip is peak-normalized ($\mathbf{x} \leftarrow \mathbf{x} / \max|\mathbf{x}|$) so the classifier cannot exploit absolute loudness. This combined policy directly targets the deployment-time threats identified by Müller et al. [10] — channel distortion, codec compression, and broadband noise — and our §6.3 ablation isolates the contribution of each component.
+
+### 3.8 Training configuration
 
 AdamW with differential LR (1 × 10⁻⁵ frontend, 1 × 10⁻⁴ backend), cosine annealing over 10 epochs, gradient clipping at $\|g\| \le 1$, batch size 8, weight decay 1 × 10⁻⁴.
 
-### 3.8 Evaluation
+### 3.9 Evaluation
 
 EER and a simplified min-tDCF ($P_{\text{spoof}} = 0.05$, $C_{\text{miss}} = 1$, $C_{\text{fa}} = 10$) are computed on the LA eval split; we additionally report per-attack EER over A07–A19 and standard binary metrics (accuracy / precision / recall / F1).
 
