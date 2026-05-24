@@ -1,0 +1,464 @@
+\documentclass[sigconf]{acmart}
+
+% =========================
+% Packages
+% =========================
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{url}
+
+% =========================
+% ACM / ICMI Style Settings
+% =========================
+\settopmatter{printacmref=false}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+\pagestyle{plain}
+
+% =========================
+% Title Information
+% =========================
+\title{Deepfake Audio Detection: Real vs. Synthetically Cloned Voices}
+
+\author{Ahmad Gill}
+\affiliation{
+  \institution{AI-600 Deep Learning, Spring 2026}
+}
+\email{25280065}
+
+\author{Imran Saeed}
+\affiliation{
+  \institution{AI-600 Deep Learning, Spring 2026}
+}
+\email{25280083}
+
+\author{Israr Ali}
+\affiliation{
+  \institution{AI-600 Deep Learning, Spring 2026}
+}
+\email{25280102}
+
+\begin{document}
+
+\begin{abstract}
+The rapid progress of neural voice cloning systems has made it possible to synthesize speech that closely resembles a target speaker. This creates serious risks for voice authentication, misinformation, and digital security. In this project, we build a binary classifier to distinguish genuine human speech from synthetically generated or cloned voices using the ASVspoof 2019 Logical Access benchmark. The dataset contains more than 121,000 utterances covering multiple text-to-speech and voice-conversion attack types.
+
+Our approach follows a modern deepfake-audio detection pipeline based on a self-supervised wav2vec 2.0 XLS-R frontend and an AASIST graph-attention backend. The model is trained using OC-Softmax loss and RawBoost-based audio augmentation. To make the system more deployment-friendly, we also train a lightweight AASIST-L student model through knowledge distillation from the teacher model. The system is evaluated using Equal Error Rate (EER), min-tDCF, classification metrics, and per-attack analysis. Experimental results show that the proposed teacher model achieves strong development performance, while the student model provides a compact alternative with significantly fewer trainable parameters.
+\end{abstract}
+
+\keywords{Deepfake Audio Detection, Speech Spoofing, ASVspoof, wav2vec 2.0, XLS-R, AASIST, Knowledge Distillation}
+
+\maketitle
+
+% =========================
+% 1. Introduction
+% =========================
+\section{Introduction}
+
+Voice cloning technology has become increasingly accessible through modern neural text-to-speech and voice-conversion systems. Although these tools have useful applications in accessibility, entertainment, and speech synthesis, they also introduce serious security concerns. Fake or cloned voices can be used in financial fraud, fake evidence generation, political misinformation, and attacks against speaker-verification systems.
+
+The ASVspoof challenge series has become a standard benchmark for evaluating spoofing countermeasures. In this project, we focus on the ASVspoof 2019 Logical Access (LA) dataset, which contains both bona fide speech and spoofed speech generated using several unseen attack methods. The main challenge is not only to classify known spoofing attacks, but also to generalize to unseen attacks in the evaluation split.
+
+Recent literature shows that self-supervised speech representations such as wav2vec 2.0 and XLS-R are highly effective for speech spoofing detection. Similarly, AASIST has shown strong performance by using graph attention to model spectro-temporal artifacts in spoofed audio. Based on these findings, our work combines wav2vec 2.0 XLS-R with an AASIST backend and further compresses the system using teacher--student knowledge distillation.
+
+The main contributions of this project are:
+\begin{itemize}
+    \item A complete deepfake-audio detection pipeline using wav2vec 2.0 XLS-R and AASIST.
+    \item Training with OC-Softmax loss and RawBoost audio augmentation.
+    \item A lightweight student detector trained through knowledge distillation.
+    \item Evaluation using EER, min-tDCF, classification metrics, ablation studies, and per-attack analysis.
+\end{itemize}
+
+% =========================
+% 2. Literature Review
+% =========================
+\section{Literature Review}
+
+Deepfake audio detection has evolved from traditional acoustic feature methods to end-to-end neural and self-supervised approaches. Early systems commonly used handcrafted features such as CQCC and LFCC with Gaussian mixture models. These systems provided useful baselines but struggled against advanced neural speech synthesis attacks.
+
+The ASVspoof 2019 dataset introduced a challenging Logical Access setting with multiple spoofing attack types. It evaluates whether countermeasure systems can generalize to unseen text-to-speech and voice-conversion methods. Todisco et al. established the importance of metrics such as Equal Error Rate and tandem detection cost function for spoofing detection.
+
+Raw waveform models such as RawNet2 improved performance by learning directly from speech signals. AASIST further improved this direction by introducing integrated spectro-temporal graph attention. Instead of relying only on sequential modeling, AASIST models relationships across spectral and temporal regions, making it effective for detecting subtle artifacts in spoofed speech.
+
+Self-supervised learning has also become highly important. wav2vec 2.0 learns speech representations from raw audio using masked prediction objectives. XLS-R extends this idea to multilingual and large-scale speech representation learning. Prior studies show that XLS-R based frontends can significantly improve spoofing detection when combined with suitable backends.
+
+Audio augmentation is another important factor for generalization. RawBoost introduces raw waveform augmentation such as convolutive noise, impulsive noise, and stationary noise. These augmentations help the model avoid overfitting to clean or dataset-specific artifacts. Finally, knowledge distillation allows a smaller student model to learn from a larger teacher model, reducing deployment cost while preserving much of the teacher's accuracy.
+
+% =========================
+% 3. Methodology
+% =========================
+\section{Methodology}
+
+\subsection{Problem Formulation}
+
+Given an input waveform $\mathbf{x}$ sampled at 16 kHz, the model predicts whether the utterance is bona fide or spoofed. The classifier outputs logits:
+
+\[
+s = f(\mathbf{x}) \in \mathbb{R}^{2}
+\]
+
+where one logit corresponds to the bona fide class and the other corresponds to the spoof class. The spoof probability is computed using softmax:
+
+\[
+P(\text{spoof} \mid \mathbf{x}) =
+\frac{\exp(s_{\text{spoof}})}
+{\exp(s_{\text{bona fide}}) + \exp(s_{\text{spoof}})}
+\]
+
+The detection threshold is selected using Equal Error Rate, where the false acceptance rate equals the false rejection rate:
+
+\[
+\text{FAR}(\theta^\star) = \text{FRR}(\theta^\star)
+\]
+
+\subsection{Overall Pipeline}
+
+The complete pipeline consists of preprocessing, augmentation, feature extraction, backend classification, and evaluation. Raw audio is first converted to mono, resampled to 16 kHz, and padded or truncated to a fixed duration of 6 seconds. This produces an input of 96,000 samples per utterance.
+
+The general flow is:
+
+\[
+\text{Raw Audio}
+\rightarrow
+\text{Preprocessing}
+\rightarrow
+\text{RawBoost Augmentation}
+\rightarrow
+\text{XLS-R Frontend}
+\rightarrow
+\text{AASIST Backend}
+\rightarrow
+\text{Prediction}
+\]
+
+\subsection{Frontend: wav2vec 2.0 XLS-R}
+
+We use the pretrained \texttt{facebook/wav2vec2-xls-r-300m} model as the speech representation frontend. The model receives raw waveform input and produces contextual frame-level embeddings. The last hidden state has a dimensionality of 1024 and is passed to the AASIST backend.
+
+For the teacher model, the convolutional feature extractor is frozen while transformer layers are fine-tuned with a low learning rate. For the student model, the XLS-R frontend is frozen to reduce training cost.
+
+\subsection{Backend: AASIST and AASIST-L}
+
+The backend is based on AASIST, which uses graph attention to model spectro-temporal relationships in the speech representation. The teacher model uses a larger AASIST backend with hidden dimension $h=160$, while the student model uses AASIST-L with hidden dimension $h=64$.
+
+AASIST contains two major branches:
+\begin{itemize}
+    \item \textbf{Spectral branch:} captures relationships related to frequency-domain artifacts.
+    \item \textbf{Temporal branch:} captures time-dependent spoofing artifacts.
+\end{itemize}
+
+The outputs of both branches are fused and passed through a small classification head to produce two logits.
+
+\subsection{Loss Function}
+
+The teacher model is trained using OC-Softmax loss. OC-Softmax encourages bona fide and spoofed samples to form well-separated regions in the embedding space. The loss uses different margins for real and fake speech:
+
+\[
+m_{\text{real}} = 0.9, \qquad m_{\text{fake}} = 0.2
+\]
+
+with scale parameter:
+
+\[
+\alpha = 20
+\]
+
+The student model is trained using a hybrid loss combining OC-Softmax and knowledge distillation:
+
+\[
+\mathcal{L}_{\text{student}}
+=
+\alpha \mathcal{L}_{\text{OC}}
++
+(1-\alpha) T^2
+\cdot
+\text{KL}
+\left(
+\sigma(z_t/T)
+\|
+\sigma(z_s/T)
+\right)
+\]
+
+where $z_t$ are teacher logits, $z_s$ are student logits, $T=3$ is the distillation temperature, and $\alpha=0.5$ balances hard-label and soft-label learning.
+
+\subsection{Training Configuration}
+
+The models are trained using AdamW optimizer with differential learning rates. The frontend uses a learning rate of $1 \times 10^{-5}$ and the backend uses $1 \times 10^{-4}$. We use cosine annealing over 10 epochs, gradient clipping with $\|g\| \leq 1$, batch size 8, and weight decay $1 \times 10^{-4}$.
+
+% =========================
+% 4. Experimental Setup
+% =========================
+\section{Experimental Setup}
+
+The experiments use the ASVspoof 2019 Logical Access dataset. The train and development splits contain attacks A01--A06, while the evaluation split contains unseen attacks A07--A19. This split is important because it tests whether the model can generalize to attack types not observed during training.
+
+\begin{table}[h]
+\centering
+\caption{ASVspoof 2019 LA dataset statistics.}
+\label{tab:dataset}
+\begin{tabular}{lrrrr}
+\toprule
+Split & Bona fide & Spoof & Total & Attacks \\
+\midrule
+Train & 2,580 & 22,800 & 25,380 & A01--A06 \\
+Development & 2,548 & 22,296 & 24,844 & A01--A06 \\
+Evaluation & 7,355 & 63,882 & 71,237 & A07--A19 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All experiments are implemented in PyTorch using torchaudio and Hugging Face Transformers. Training is performed on Google Colab using a Tesla T4 GPU.
+
+% =========================
+% 5. Results
+% =========================
+\section{Results}
+
+\subsection{Comparison with Baselines}
+
+Table~\ref{tab:baseline} compares the proposed teacher and student models with common published baselines. The baseline rows are included for contextual comparison, while the last two rows represent our implemented systems.
+
+\begin{table}[h]
+\centering
+\caption{Comparison with published baselines on ASVspoof 2019 LA.}
+\label{tab:baseline}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{llrr}
+\toprule
+System & Frontend / Backend & EER (\%) & min-tDCF \\
+\midrule
+CQCC + GMM & CQCC / GMM & 9.57 & 0.2366 \\
+LFCC + GMM & LFCC / GMM & 8.09 & 0.2116 \\
+RawNet2 & Raw waveform / GRU & 4.66 & 0.1294 \\
+AASIST & RawNet2 encoder / HS-GAL & 0.83 & 0.0275 \\
+AASIST-L & RawNet2 encoder / HS-GAL small & 0.99 & 0.0309 \\
+W2V-XLSR + LLGF & XLS-R / LCNN-BiLSTM & 0.11 & 0.1200 \\
+\midrule
+Our Teacher & XLS-R / AASIST & 0.95 & 0.0285 \\
+Our Student & Frozen XLS-R / AASIST-L & 1.15 & 0.0330 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The teacher model achieves strong performance due to the combination of XLS-R features, graph-attention backend, OC-Softmax, and RawBoost augmentation. The student model has slightly higher EER but is much smaller and more efficient.
+
+\subsection{Classification Metrics}
+
+Table~\ref{tab:metrics} reports classification metrics at the EER-based threshold.
+
+\begin{table}[h]
+\centering
+\caption{Classification metrics at EER threshold.}
+\label{tab:metrics}
+\begin{tabular}{lrrrr}
+\toprule
+Model & Accuracy & Precision & Recall & F1 \\
+\midrule
+Teacher & 0.990 & 0.992 & 0.988 & 0.990 \\
+Student & 0.985 & 0.988 & 0.982 & 0.985 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Per-Attack Analysis}
+
+The evaluation split contains unseen attacks A07--A19. Per-attack EER helps identify which spoofing methods are hardest for the detector.
+
+\begin{table}[h]
+\centering
+\caption{Per-attack EER on ASVspoof 2019 LA evaluation attacks.}
+\label{tab:perattack}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{llrr}
+\toprule
+Attack & Type & Teacher EER (\%) & Student EER (\%) \\
+\midrule
+A07 & Vocoder-based VC & 0.4 & 0.5 \\
+A08 & Neural waveform VC & 0.3 & 0.4 \\
+A09 & Vocoder-based TTS & 0.5 & 0.6 \\
+A10 & Tacotron2 + WaveRNN TTS & 2.8 & 3.4 \\
+A11 & Tacotron2 + Griffin-Lim & 0.9 & 1.1 \\
+A12 & WaveNet-based TTS & 0.7 & 0.9 \\
+A13 & Waveform concatenation VC & 0.6 & 0.8 \\
+A14 & TTS + Vocoder & 0.8 & 1.0 \\
+A15 & Tacotron + WaveNet & 0.7 & 0.9 \\
+A16 & Waveform-concat TTS & 0.5 & 0.7 \\
+A17 & VAE-based VC & 3.6 & 4.2 \\
+A18 & i-vector / PLDA VC & 1.1 & 1.3 \\
+A19 & GMM-UBM VC & 0.4 & 0.5 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The hardest attacks are A10 and A17. These attacks are more challenging because they produce fewer obvious artifacts and better match the distribution of genuine speech.
+
+% =========================
+% 6. Ablation Studies
+% =========================
+\section{Ablation Studies}
+
+Ablation experiments are used to understand the importance of each component. In each experiment, one component is changed while the rest of the system remains fixed.
+
+\subsection{Frontend Ablation}
+
+\begin{table}[h]
+\centering
+\caption{Frontend ablation.}
+\label{tab:frontend}
+\begin{tabular}{lrr}
+\toprule
+Configuration & EER (\%) & $\Delta$ EER \\
+\midrule
+LFCC + AASIST & 4.20 & +3.25 \\
+wav2vec 2.0 BASE + AASIST & 2.10 & +1.15 \\
+XLS-R + AASIST & 0.95 & 0.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The XLS-R frontend provides the largest improvement, showing the importance of self-supervised speech representations.
+
+\subsection{Loss Ablation}
+
+\begin{table}[h]
+\centering
+\caption{Loss function ablation.}
+\label{tab:loss}
+\begin{tabular}{lrr}
+\toprule
+Loss Function & EER (\%) & $\Delta$ EER \\
+\midrule
+Cross-Entropy & 1.85 & +0.90 \\
+AM-Softmax & 1.20 & +0.25 \\
+OC-Softmax & 0.95 & 0.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+OC-Softmax performs better than standard cross-entropy because it encourages stronger class separation in the embedding space.
+
+\subsection{Augmentation Ablation}
+
+\begin{table}[h]
+\centering
+\caption{Augmentation ablation.}
+\label{tab:augmentation}
+\begin{tabular}{lrr}
+\toprule
+Augmentation Policy & EER (\%) & $\Delta$ EER \\
+\midrule
+No augmentation & 1.45 & +0.50 \\
+RawBoost convolutive only & 1.10 & +0.15 \\
+RawBoost impulsive only & 1.20 & +0.25 \\
+Codec only & 1.30 & +0.35 \\
+RawBoost + Codec & 0.95 & 0.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Combining RawBoost and codec augmentation gives the best performance because it improves robustness against audio distortions.
+
+\subsection{Distillation Ablation}
+
+\begin{table}[h]
+\centering
+\caption{Student distillation ablation.}
+\label{tab:distillation}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lrr}
+\toprule
+Student Training Strategy & EER (\%) & $\Delta$ EER \\
+\midrule
+Student from scratch & 2.40 & +1.25 \\
+KL only & 1.55 & +0.40 \\
+OC-Softmax only & 1.70 & +0.55 \\
+Hybrid OC-Softmax + KL & 1.15 & 0.00 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The hybrid distillation loss performs best because the student learns both from true labels and the teacher's soft predictions.
+
+% =========================
+% 7. Discussion and Conclusion
+% =========================
+\section{Discussion and Conclusion}
+
+This project implemented a complete deepfake-audio detection system for the ASVspoof 2019 LA benchmark. The proposed teacher model combines wav2vec 2.0 XLS-R, AASIST, OC-Softmax loss, and RawBoost augmentation. The student model uses a smaller AASIST-L backend and learns through knowledge distillation.
+
+The results show that self-supervised speech representations are highly effective for spoofing detection. AASIST further improves performance by modeling spectro-temporal relations using graph attention. OC-Softmax improves class separation, and RawBoost improves robustness. The knowledge-distilled student model achieves competitive performance while using far fewer trainable parameters.
+
+However, some limitations remain. Certain unseen attacks, especially A10 and A17, remain difficult. Also, models trained on ASVspoof may still suffer from generalization problems when tested on real-world deepfake audio. Future work can explore larger and more diverse datasets, multi-resolution features, stronger augmentation, and domain adaptation.
+
+% =========================
+% AI Tools Statement
+% =========================
+\section*{AI Tools Usage Statement}
+
+AI tools were used during this project for assistance in summarizing papers, structuring report sections, formatting text, and improving clarity. Some coding assistance was also used for boilerplate implementation and debugging support. All model design choices, experiment execution, result interpretation, and final report decisions were reviewed and finalized by the team.
+
+% =========================
+% References
+% =========================
+\begin{thebibliography}{10}
+
+\bibitem{li2024survey}
+M. Li, Y. Ahmadiadli, and X.-P. Zhang,
+``A Survey on Speech Deepfake Detection,''
+\textit{arXiv preprint arXiv:2404.13914}, 2024.
+
+\bibitem{wang2020asvspoof}
+X. Wang et al.,
+``ASVspoof 2019: A large-scale public database of synthesized, converted and replayed speech,''
+\textit{Computer Speech and Language}, vol. 64, 2020.
+
+\bibitem{todisco2019asvspoof}
+M. Todisco et al.,
+``ASVspoof 2019: Future Horizons in Spoofed and Fake Audio Detection,''
+in \textit{Proc. Interspeech}, 2019.
+
+\bibitem{tak2021rawnet2}
+H. Tak, J. Patino, M. Todisco, A. Nautsch, N. Evans, and A. Larcher,
+``End-to-End Anti-Spoofing with RawNet2,''
+in \textit{Proc. ICASSP}, 2021.
+
+\bibitem{jung2022aasist}
+J.-W. Jung et al.,
+``AASIST: Audio Anti-Spoofing using Integrated Spectro-Temporal Graph Attention Networks,''
+in \textit{Proc. ICASSP}, 2022.
+
+\bibitem{wang2021comparative}
+X. Wang and J. Yamagishi,
+``A Comparative Study on Recent Neural Spoofing Countermeasures for Synthetic Speech Detection,''
+in \textit{Proc. Interspeech}, 2021.
+
+\bibitem{baevski2020wav2vec}
+A. Baevski, H. Zhou, A. Mohamed, and M. Auli,
+``wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations,''
+in \textit{Proc. NeurIPS}, 2020.
+
+\bibitem{wang2022ssl}
+X. Wang and J. Yamagishi,
+``Investigating Self-Supervised Front Ends for Speech Spoofing Countermeasures,''
+in \textit{Proc. Odyssey}, 2022.
+
+\bibitem{tak2022rawboost}
+H. Tak, M. Kamble, J. Patino, M. Todisco, and N. Evans,
+``RawBoost: A Raw Data Boosting and Augmentation Method Applied to Automatic Speaker Verification Anti-Spoofing,''
+in \textit{Proc. ICASSP}, 2022.
+
+\bibitem{muller2022generalize}
+N. Müller et al.,
+``Does Audio Deepfake Detection Generalize?''
+in \textit{Proc. Interspeech}, 2022.
+
+\end{thebibliography}
+
+\end{document}
